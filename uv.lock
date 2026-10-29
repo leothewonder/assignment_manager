@@ -1,0 +1,19 @@
+version = 1
+revision = 3
+requires-python = ">=3.14"
+
+[manifest]
+members = [
+    "programming",
+    "wk5",
+]
+
+[[package]]
+name = "programming"
+version = "0.1.0"
+source = { editable = "." }
+
+[[package]]
+name = "wk5"
+version = "0.1.0"
+source = { virtual = "wk5" }
