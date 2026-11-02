@@ -1,5 +1,8 @@
 [project]
 name = "wk5"
-version = "0.1.0"
+version = "0.2.0"
+description = "과제 마감일 알리미 - 공휴일 API로 남은 평일 수를 계산"
 requires-python = ">=3.14"
-dependencies = []
+dependencies = [
+    "requests>=2.34.2",
+]
