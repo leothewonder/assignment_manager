@@ -1,2 +1,9 @@
 .venv/
 __pycache__/
+
+# 실행하면 생기는 개인 데이터 파일
+assignments.json
+holidays_cache.json
+
+# API 키 파일 (이번 API는 키가 필요 없지만 실수로 올라가지 않게)
+.env

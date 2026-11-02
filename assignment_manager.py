@@ -1,8 +1,8 @@
 """과제 마감일 알리미 (Assignment Deadline Manager - CLI & GUI)
 
 실행 방법
-    python assignment_manager.py          # GUI 모드 (기본)
-    python assignment_manager.py --cli    # 콘솔(CLI) 모드
+    uv run assignment_manager.py          # GUI 모드 (기본)
+    uv run assignment_manager.py --cli    # 콘솔(CLI) 모드
 """
 
 import json
@@ -11,6 +11,8 @@ import sys
 import tkinter as tk
 from datetime import date, datetime
 from tkinter import messagebox, ttk
+
+import holiday_api
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 DATA_FILE = os.path.join(BASE_DIR, "assignments.json")
@@ -85,47 +87,77 @@ def pad_str(s: str, target_width: int) -> str:
     return s + " " * max(0, target_width - get_display_width(s))
 
 
-def view_assignments(assignments: list) -> None:
-    """마감이 가까운 순서로 과제 목록을 출력합니다."""
+def view_assignments(assignments: list, holidays: dict) -> None:
+    """마감이 가까운 순서로 과제 목록을 출력합니다. (남은 평일 수, 쉬는 날 표시 포함)"""
     sort_assignments(assignments)
-    print("\n" + "=" * 60 + "\n                    [ 과제 목록 ]\n" + "=" * 60)
+    line = "=" * 78
+    print("\n" + line + "\n" + " " * 31 + "[ 과제 목록 ]\n" + line)
     if not assignments:
-        print("  등록된 과제가 없습니다. 새로운 과제를 추가해보세요.\n" + "=" * 60)
+        print("  등록된 과제가 없습니다. 새로운 과제를 추가해보세요.\n" + line)
         return
-    print(f" {pad_str('번호', 6)}| {pad_str('D-Day', 12)}| {pad_str('마감일', 14)}| 과제 이름\n" + "-" * 60)
+    header = (f" {pad_str('번호', 5)}| {pad_str('D-Day', 10)}| {pad_str('평일', 6)}| "
+              f"{pad_str('마감일', 11)}| {pad_str('비고', 14)}| 과제 이름")
+    print(header + "\n" + "-" * 78)
     for idx, item in enumerate(assignments, start=1):
-        num_str = pad_str(str(idx), 6)
-        dday_str = pad_str(calculate_dday(item.get("deadline", "")), 12)
-        dl_str = pad_str(item.get("deadline", ""), 14)
-        print(f" {num_str}| {dday_str}| {dl_str}| {item.get('title', '')}")
-    print("=" * 60)
+        deadline = item.get("deadline", "")
+        print(f" {pad_str(str(idx), 5)}"
+              f"| {pad_str(calculate_dday(deadline), 10)}"
+              f"| {pad_str(holiday_api.count_workdays(deadline, holidays), 6)}"
+              f"| {pad_str(deadline, 11)}"
+              f"| {pad_str(holiday_api.day_note(deadline, holidays), 14)}"
+              f"| {item.get('title', '')}")
+    print(line)
+    print(" * 평일: 오늘부터 마감일까지 주말·공휴일을 뺀 날 수")
+    if not holidays:
+        print(" * 지금은 공휴일 정보가 없어서 평일 수에서 주말만 뺐습니다.")
 
 
-def add_assignment(assignments: list) -> None:
-    """새 과제와 마감일을 입력받아 추가합니다."""
+def show_upcoming_holidays(holidays: dict, status: str) -> None:
+    """앞으로 60일 안의 공휴일을 출력합니다."""
+    print("\n[ 다가오는 공휴일 (60일 이내) ]")
+    print(f"({status})")
+    upcoming = holiday_api.upcoming_holidays(holidays)
+    if not upcoming:
+        print("  60일 안에 공휴일이 없습니다." if holidays else "  공휴일 정보를 받아오지 못했습니다.")
+        return
+    for day_str, weekday, name in upcoming:
+        print(f"  {day_str} ({weekday})  {name}  [{calculate_dday(day_str)}]")
+
+
+def warn_if_day_off(deadline: str, holidays: dict) -> str:
+    """마감일이 쉬는 날이면 안내 문구를, 아니면 빈 문자열을 돌려줍니다."""
+    note = holiday_api.day_note(deadline, holidays)
+    if not note:
+        return ""
+    return f"참고: 마감일({deadline})은 {note}입니다. 미리 끝내두는 걸 추천해요."
+
+
+def add_assignment(assignments: list):
+    """새 과제와 마감일을 입력받아 추가합니다. 추가한 마감일을 돌려주고, 취소되면 None."""
     print("\n[ 과제 추가 ]")
     title = input("과제 이름을 입력하세요 (취소: 엔터): ").strip()
     if not title:
         print("안내: 과제 이름이 입력되지 않아 메뉴로 돌아갑니다.")
-        return
+        return None
     raw_date = input("마감일을 입력하세요 (예: 2026-10-15): ").strip()
     parsed_date = parse_date_input(raw_date)
     if not parsed_date:
         print("안내: 잘못된 날짜 형식입니다. 'YYYY-MM-DD' 형식(예: 2026-10-15)으로 입력해주세요.")
-        return
+        return None
     assignments.append({"title": title, "deadline": parsed_date})
     sort_assignments(assignments)
     save_assignments(assignments)
     print(f"성공: 과제 '{title}' (마감일: {parsed_date})이(가) 등록되었습니다.")
+    return parsed_date
 
 
-def delete_assignment(assignments: list) -> None:
+def delete_assignment(assignments: list, holidays: dict) -> None:
     """과제 번호를 입력받아 목록에서 삭제합니다."""
     print("\n[ 과제 삭제 ]")
     if not assignments:
         print("안내: 삭제할 과제가 없습니다.")
         return
-    view_assignments(assignments)
+    view_assignments(assignments, holidays)
     choice = input("\n삭제할 과제 번호를 입력하세요 (취소: 0): ").strip()
     try:
         idx = int(choice)
@@ -146,7 +178,7 @@ def delete_assignment(assignments: list) -> None:
 def print_menu() -> None:
     """메인 메뉴 출력."""
     print("\n" + "=" * 32 + "\n      과제 마감일 알리미\n" + "=" * 32)
-    print(" 1. 과제 목록 보기\n 2. 과제 추가\n 3. 과제 삭제\n 4. 종료")
+    print(" 1. 과제 목록 보기\n 2. 과제 추가\n 3. 과제 삭제\n 4. 다가오는 공휴일 보기\n 5. 종료")
     print(" (GUI 실행: g 입력)")
     print("=" * 32)
 
@@ -156,17 +188,28 @@ def run_cli() -> None:
     assignments = load_assignments()
     sort_assignments(assignments)
     print("과제 마감일 알리미 프로그램을 시작합니다.")
+    print("공휴일 정보를 불러오는 중...")
+    holidays, status = holiday_api.load_holidays(holiday_api.years_needed(assignments))
+    print(f"안내: {status}")
     while True:
         try:
             print_menu()
-            choice = input("원하는 메뉴 번호를 입력하세요 (1-4): ").strip()
+            choice = input("원하는 메뉴 번호를 입력하세요 (1-5): ").strip()
             if choice == "1":
-                view_assignments(assignments)
+                view_assignments(assignments, holidays)
             elif choice == "2":
-                add_assignment(assignments)
+                new_deadline = add_assignment(assignments)
+                if new_deadline:
+                    # 새 마감일의 연도 공휴일이 없을 수 있으니 다시 확인 (저장된 정보가 최신이면 API는 부르지 않음)
+                    holidays, status = holiday_api.load_holidays(holiday_api.years_needed(assignments))
+                    warning = warn_if_day_off(new_deadline, holidays)
+                    if warning:
+                        print(warning)
             elif choice == "3":
-                delete_assignment(assignments)
+                delete_assignment(assignments, holidays)
             elif choice == "4":
+                show_upcoming_holidays(holidays, status)
+            elif choice == "5":
                 save_assignments(assignments)
                 print("과제 목록을 파일에 저장했습니다. 프로그램을 종료합니다.")
                 break
@@ -174,8 +217,9 @@ def run_cli() -> None:
                 run_gui()
                 assignments = load_assignments()
                 sort_assignments(assignments)
+                holidays, status = holiday_api.load_holidays(holiday_api.years_needed(assignments))
             else:
-                print("안내: 없는 메뉴 번호입니다. 1에서 4 사이의 숫자를 입력해주세요.")
+                print("안내: 없는 메뉴 번호입니다. 1에서 5 사이의 숫자를 입력해주세요.")
         except (KeyboardInterrupt, EOFError):
             print("\n\n프로그램을 종료합니다.")
             save_assignments(assignments)
@@ -192,11 +236,15 @@ class AssignmentGUIApp:
     def __init__(self, root: tk.Tk):
         self.root = root
         self.root.title("과제 마감일 알리미")
-        self.root.geometry("640x520")
-        self.root.minsize(560, 420)
+        self.root.geometry("820x540")
+        self.root.minsize(700, 420)
 
         self.assignments = load_assignments()
         sort_assignments(self.assignments)
+
+        # 공휴일 정보 불러오기 (API 또는 저장된 파일)
+        self.holidays, self.holiday_status = holiday_api.load_holidays(
+            holiday_api.years_needed(self.assignments))
 
         self.setup_ui()
         self.refresh_table()
@@ -228,12 +276,14 @@ class AssignmentGUIApp:
         table_frame = ttk.Frame(self.root, padding=14)
         table_frame.pack(fill="both", expand=True)
 
-        columns = ("num", "dday", "deadline", "title")
+        columns = ("num", "dday", "workdays", "deadline", "note", "title")
         self.tree = ttk.Treeview(table_frame, columns=columns, show="headings", selectmode="browse")
         for col, heading, width, anchor in [
-            ("num", "번호", 60, "center"),
-            ("dday", "D-Day", 100, "center"),
-            ("deadline", "마감일", 120, "center"),
+            ("num", "번호", 50, "center"),
+            ("dday", "D-Day", 90, "center"),
+            ("workdays", "남은 평일", 80, "center"),
+            ("deadline", "마감일", 110, "center"),
+            ("note", "비고", 120, "center"),
             ("title", "과제 이름", 300, "w"),
         ]:
             self.tree.heading(col, text=heading)
@@ -255,6 +305,7 @@ class AssignmentGUIApp:
 
         ttk.Button(bottom_frame, text="선택한 과제 삭제", command=self.delete_selected).pack(side="left", padx=5)
         ttk.Button(bottom_frame, text="새로고침", command=self.refresh_table).pack(side="left", padx=5)
+        ttk.Button(bottom_frame, text="다가오는 공휴일", command=self.show_holidays).pack(side="left", padx=5)
 
         self.status_label = ttk.Label(bottom_frame, text="", foreground="gray")
         self.status_label.pack(side="right", padx=5)
@@ -282,10 +333,12 @@ class AssignmentGUIApp:
             deadline = task.get("deadline", "")
             dday = calculate_dday(deadline)
             title = task.get("title", "")
-            self.tree.insert("", "end", values=(idx, dday, deadline, title),
+            workdays = holiday_api.count_workdays(deadline, self.holidays)
+            note = holiday_api.day_note(deadline, self.holidays)
+            self.tree.insert("", "end", values=(idx, dday, workdays, deadline, note, title),
                              tags=(self.get_tag(dday),))
 
-        self.status_label.config(text=f"총 {len(self.assignments)}개의 과제")
+        self.status_label.config(text=f"총 {len(self.assignments)}개의 과제 · {self.holiday_status}")
 
     def add_task(self):
         """과제 추가 처리."""
@@ -306,11 +359,31 @@ class AssignmentGUIApp:
         self.assignments.append({"title": title, "deadline": parsed_date})
         sort_assignments(self.assignments)
         save_assignments(self.assignments)
+
+        # 새 마감일의 연도 공휴일이 없을 수 있으니 다시 확인 (저장된 정보가 최신이면 API는 부르지 않음)
+        self.holidays, self.holiday_status = holiday_api.load_holidays(
+            holiday_api.years_needed(self.assignments))
         self.refresh_table()
 
         self.title_entry.delete(0, tk.END)
         self.status_label.config(text=f"'{title}' 과제가 추가되었습니다.")
+        warning = warn_if_day_off(parsed_date, self.holidays)
+        if warning:
+            messagebox.showinfo("마감일 안내", warning)
         self.title_entry.focus()
+
+    def show_holidays(self):
+        """앞으로 60일 안의 공휴일을 창으로 보여줍니다."""
+        upcoming = holiday_api.upcoming_holidays(self.holidays)
+        if upcoming:
+            lines = [f"{day_str} ({weekday})  {name}  [{calculate_dday(day_str)}]"
+                     for day_str, weekday, name in upcoming]
+            text = "\n".join(lines)
+        elif self.holidays:
+            text = "60일 안에 공휴일이 없습니다."
+        else:
+            text = "공휴일 정보를 받아오지 못했습니다.\n인터넷 연결을 확인해주세요."
+        messagebox.showinfo("다가오는 공휴일 (60일 이내)", f"{text}\n\n({self.holiday_status})")
 
     def delete_selected(self):
         """선택된 과제 삭제 처리."""
