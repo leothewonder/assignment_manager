@@ -114,7 +114,9 @@ holiday api를 만들어줘
 
 🤖 Claude
 
-holiday_api.py는 과제 마감일 알리미가 Nager.Date 공휴일 API에서 한국 공휴일을 받아오고, 마감일 계산에 쓰게 해주는 모듈이에요. API 키는 필요 없어요.
+`holiday_api.py`는 과제 마감일 알리미가 **Nager.Date 공휴일 API**에서 한국 공휴일을 받아오고, 마감일 계산에 쓰게 해주는 모듈이에요. API 키는 필요 없어요.
+
+```python
 """공휴일 API 모듈 (Nager.Date)
 
 한국 공휴일 정보를 Nager.Date API에서 받아와 파일에 저장해 두고,
@@ -313,13 +315,16 @@ def upcoming_holidays(holidays: dict, days: int = 60, today: date = None) -> lis
             result.append((day_str, WEEKDAY_NAMES[day.weekday()], name))
     result.sort()
     return result
+```
 
-    함수별 역할
-함수	하는 일
-fetch_holidays(year)	API에 요청을 보내 그해 공휴일을 {"날짜": "이름"} 형태로 받아와요. 연결 실패, 오류 응답, 이상한 응답이 오면 None을 돌려줘서 프로그램이 멈추지 않아요.
-load_holidays(years)	7일 안에 받아둔 정보가 있으면 그걸 쓰고, 없으면 API를 불러요. API가 실패하면 예전에 저장한 정보로 대신 써요.
-load_cache(), save_cache(), is_fresh()	받아온 공휴일을 holidays_cache.json에 저장하고 불러와요. 저장한 지 7일이 지났는지도 확인해요.
-years_needed(assignments)	공휴일을 받아올 연도(올해, 내년, 과제 마감일의 연도)를 모아요.
-day_note()	마감일이 공휴일이면 그 이름을, 주말이면 "토요일"이나 "일요일"을 돌려줘요.
-count_workdays()	오늘부터 마감일까지 주말과 공휴일을 뺀 평일 수를 세요.
-upcoming_holidays()	앞으로 60일 안의 공휴일을 날짜순으로 모아요.
+## 함수별 역할
+
+| 함수 | 하는 일 |
+|---|---|
+| `fetch_holidays(year)` | API에 요청을 보내 그해 공휴일을 `{"날짜": "이름"}` 형태로 받아와요. 연결 실패, 오류 응답, 이상한 응답이 오면 `None`을 돌려줘서 프로그램이 멈추지 않아요. |
+| `load_holidays(years)` | 7일 안에 받아둔 정보가 있으면 그걸 쓰고, 없으면 API를 불러요. API가 실패하면 예전에 저장한 정보로 대신 써요. |
+| `load_cache()`, `save_cache()`, `is_fresh()` | 받아온 공휴일을 `holidays_cache.json`에 저장하고 불러와요. 저장한 지 7일이 지났는지도 확인해요. |
+| `years_needed(assignments)` | 공휴일을 받아올 연도(올해, 내년, 과제 마감일의 연도)를 모아요. |
+| `day_note()` | 마감일이 공휴일이면 그 이름을, 주말이면 "토요일"이나 "일요일"을 돌려줘요. |
+| `count_workdays()` | 오늘부터 마감일까지 주말과 공휴일을 뺀 평일 수를 세요. |
+| `upcoming_holidays()` | 앞으로 60일 안의 공휴일을 날짜순으로 모아요. |
