@@ -53,7 +53,7 @@ D-53이지만 주말과 공휴일을 빼면 실제로 쓸 수 있는 평일은 3
 | `.python-version` | 사용할 파이썬 버전 |
 | `api-plan.md` | 이번 API 업데이트 기획안 |
 | `plan-1 (1).md`, `newplan2.md` | 이전 기획안 |
-| `ai_conversation.md` | 바이브 코딩에 사용한 AI와의 대화 원문 |
+| `conversation_log.md` | 바이브 코딩에 사용한 AI와의 대화 원문 |
 
 실행하면 생기는 `assignments.json`(과제 목록)과 `holidays_cache.json`(공휴일 저장본)은 개인 데이터라 `.gitignore`로 저장소에서 뺐습니다. 파일이 없으면 프로그램이 빈 목록에서 시작합니다.
 
